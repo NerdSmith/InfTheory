@@ -17,7 +17,7 @@ def main():
         e.calc_conditional_entropies()
         e.print_res()
     print("="*100, "\n"*10, "="*100)
-    target_folder = "task1_entropy_tests"
+    target_folder = "task2_entropy_tests"
 
     for file in os.listdir(target_folder):
         je = JointEnsemble(target_folder + "\\" + file)

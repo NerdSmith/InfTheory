@@ -170,7 +170,7 @@ class Entropy:
 
 
 def main():
-    target_folder = "task1_entropy_tests"
+    target_folder = "task2_entropy_tests"
     je = JointEnsemble(target_folder + "\\" + "input1.txt")
     je.find_probabilities()
     je.find_cond_probabilities()
