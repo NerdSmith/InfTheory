@@ -23,7 +23,7 @@ def main():
         je = JointEnsemble(target_folder + "\\" + file)
         je.find_probabilities()
         je.find_cond_probabilities()
-        je.print_res()
+        # je.print_res()
         e = Entropy(je)
         e.calc_binary_entropy()
         e.calc_partial_conditional_entropies()
