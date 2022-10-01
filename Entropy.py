@@ -14,6 +14,12 @@ class BinaryEntropy:
         def value(self):
             return self.probability.value() * np.log2(self.probability.value())
 
+        def calc_component_str(self):
+            return f"{self.probability.component_str()} * log2({self.probability.component_str()})"
+
+        def calc_value_str(self):
+            return f"{self.probability.value()} * log2({self.probability.value()})"
+
     def __init__(self, name):
         self.name = name
         self.sum_components = []
@@ -24,8 +30,16 @@ class BinaryEntropy:
     def component_str(self):
         return f"H({self.name})"
 
+    def get_components_calc_str(self):
+        terms = [s_c.calc_component_str() for s_c in self.sum_components]
+        return "-(" + " + ".join(terms) + ")"
+
+    def get_val_calc_str(self):
+        terms = [s_c.calc_value_str() for s_c in self.sum_components]
+        return "-(" + " + ".join(terms) + ")"
+
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
 
 
 class JointEntropy:
@@ -35,6 +49,12 @@ class JointEntropy:
 
         def value(self):
             return self.joint_probability.value * np.log2(self.joint_probability.value)
+
+        def calc_component_str(self):
+            return f"{self.joint_probability.components_str()} * log2({self.joint_probability.components_str()})"
+
+        def calc_value_str(self):
+            return f"{self.joint_probability.value} * log2({self.joint_probability.value})"
 
     def __init__(self, names):
         self.names = names
@@ -46,8 +66,16 @@ class JointEntropy:
     def component_str(self):
         return f"H({''.join(self.names)})"
 
+    def get_components_calc_str(self):
+        terms = [s_c.calc_component_str() for s_c in self.sum_components]
+        return "-(" + " + ".join(terms) + ")"
+
+    def get_val_calc_str(self):
+        terms = [s_c.calc_value_str() for s_c in self.sum_components]
+        return "-(" + " + ".join(terms) + ")"
+
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
 
 
 class PartialConditionalEntropy:
@@ -57,6 +85,12 @@ class PartialConditionalEntropy:
 
         def value(self):
             return self.conditional_probability.value() * np.log2(self.conditional_probability.value())
+
+        def calc_component_str(self):
+            return f"{self.conditional_probability.component_str()} * log2({self.conditional_probability.component_str()})"
+
+        def calc_value_str(self):
+            return f"{self.conditional_probability.value()} * log2({self.conditional_probability.value()})"
 
     def __init__(self, name, cond_name, cond_idx):
         self.name = name
@@ -73,8 +107,16 @@ class PartialConditionalEntropy:
     def component_str(self):
         return f"H{self.cond_name}_{self.cond_idx}({self.name})"
 
+    def get_components_calc_str(self):
+        terms = [s_c.calc_component_str() for s_c in self.sum_components]
+        return "-(" + " + ".join(terms) + ")"
+
+    def get_val_calc_str(self):
+        terms = [s_c.calc_value_str() for s_c in self.sum_components]
+        return "-(" + " + ".join(terms) + ")"
+
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
 
 
 class ConditionalEntropy:
@@ -84,7 +126,13 @@ class ConditionalEntropy:
             self.partial_conditional_entropy = partial_conditional_entropy
 
         def value(self):
-            return self.probability.value() * self.partial_conditional_entropy.pure_value()
+            return self.probability.value() * self.partial_conditional_entropy.value()
+
+        def calc_component_str(self):
+            return f"{self.probability.component_str()} * {self.partial_conditional_entropy.component_str()}"
+
+        def calc_value_str(self):
+            return f"{self.probability.value()} * {self.partial_conditional_entropy.value()}"
 
     def __init__(self, name, cond_name):
         self.name = name
@@ -92,13 +140,21 @@ class ConditionalEntropy:
         self.sum_components = []
 
     def value(self):
-        return -sum([sum_component.value() for sum_component in self.sum_components])
+        return sum([sum_component.value() for sum_component in self.sum_components])
 
     def component_str(self):
         return f"H{self.cond_name}({self.name})"
 
+    def get_components_calc_str(self):
+        terms = [s_c.calc_component_str() for s_c in self.sum_components]
+        return " + ".join(terms)
+
+    def get_val_calc_str(self):
+        terms = [s_c.calc_value_str() for s_c in self.sum_components]
+        return " + ".join(terms)
+
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
 
 
 class Entropy:
