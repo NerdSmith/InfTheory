@@ -10,6 +10,9 @@ class ComponentIdx:
     def __str__(self):
         return f"{self.name}_{self.idx}"
 
+    def __eq__(self, other: "ComponentIdx"):
+        return other.idx == self.idx and other.name == self.name
+
 
 class JointProbability:
     def __init__(self, components, value):
@@ -216,6 +219,12 @@ class JointEnsemble:
                 table[i] = new_values[0].value
             else:
                 self.set_value(table_part, new_vars_to_add, new_values)
+
+    def find_in_cond_probabilities(self, components: List[ComponentIdx]):
+        for cp in self.cond_probabilities:
+            if cp.components == components:
+                return cp
+        return None
 
     def is_ensembles_dependent(self):
         flag = False # not independent by default
