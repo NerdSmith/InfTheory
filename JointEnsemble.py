@@ -241,6 +241,8 @@ class JointEnsemble:
                 mult *= f_prob.value()
             r_str += "*".join(p_vals)
 
+            mult = np.round(mult, 4)
+
             if mult != jp.value:
                 r_str += " != "
                 flag = True
