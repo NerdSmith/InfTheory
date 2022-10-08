@@ -39,7 +39,7 @@ class BinaryEntropy:
         return "-(" + " + ".join(terms) + ")"
 
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 2))}"
 
 
 class JointEntropy:
@@ -75,7 +75,7 @@ class JointEntropy:
         return "-(" + " + ".join(terms) + ")"
 
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 2))}"
 
 
 class PartialConditionalEntropy:
@@ -116,7 +116,7 @@ class PartialConditionalEntropy:
         return "-(" + " + ".join(terms) + ")"
 
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 2))}"
 
 
 class ConditionalEntropy:
@@ -154,7 +154,7 @@ class ConditionalEntropy:
         return " + ".join(terms)
 
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 4))}"
+        return f"{self.component_str()} = {self.get_components_calc_str()} = {self.get_val_calc_str()} = {str(round(self.value(), 2))}"
 
 
 class Entropy:

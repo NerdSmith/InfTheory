@@ -4,7 +4,7 @@ import os
 
 def main():
 
-    target_folder = "home_work_1"
+    target_folder = "atta"
     for file in os.listdir(target_folder):
         je = JointEnsemble(target_folder + "\\" + file)
         je.find_probabilities()

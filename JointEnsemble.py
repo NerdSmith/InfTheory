@@ -51,7 +51,7 @@ class CondProbability:
         return f"{self.component_str()} = " \
                f"{self.get_names_calc_str()} = " \
                f"{self.get_values_calc_str()} = " \
-               f"{self.value()}"
+               f"{np.round(self.value(), 2)}"
 
 
 class Probability:
@@ -241,15 +241,15 @@ class JointEnsemble:
                 mult *= f_prob.value()
             r_str += "*".join(p_vals)
 
-            mult = np.round(mult, 4)
+            mult = np.round(mult, 2)
 
-            if mult != jp.value:
-                r_str += " != "
+            if mult != np.round(jp.value, 2):
+                r_str += f" = {mult} != "
                 flag = True
             else:
-                r_str += " = "
+                r_str += f" = {mult} = "
 
-            r_str += str(jp.value)
+            r_str += str(np.round(jp.value, 2))
             print(r_str)
 
         if flag:
