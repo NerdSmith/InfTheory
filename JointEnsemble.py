@@ -1,5 +1,6 @@
 from typing import List
 import numpy as np
+from TaskInpType import TInpType
 
 
 class ComponentIdx:
@@ -27,10 +28,11 @@ class JointProbability:
 
 
 class CondProbability:
-    def __init__(self, components, jp, p):
+    def __init__(self, components, jp=None, p=None, val=None):
         self.components = components
         self.jp = jp
         self.prob = p
+        self.val = val
 
     def value(self):
         return round(self.jp.value / self.prob.value(), 4)
@@ -48,10 +50,16 @@ class CondProbability:
         return r
 
     def get_calc_repr_str(self):
-        return f"{self.component_str()} = " \
-               f"{self.get_names_calc_str()} = " \
-               f"{self.get_values_calc_str()} = " \
-               f"{np.round(self.value(), 2)}"
+        if self.val is not None:
+            return f"{self.component_str()} = " \
+                   f"{self.val}"
+        elif self.jp is not None and self.prob is not None:
+            return f"{self.component_str()} = " \
+                   f"{self.get_names_calc_str()} = " \
+                   f"{self.get_values_calc_str()} = " \
+                   f"{np.round(self.value(), 2)}"
+        else:
+            return f"{self.component_str()} is not set! ERROR"
 
 
 class Probability:
@@ -89,7 +97,12 @@ class JointEnsemble:
 
     def parse(self, path):
         inp = self.read_input(path)
-        self.parse_file(inp)
+        str_inp_type = inp[0].split("#")[0].strip()
+
+        if str_inp_type == TInpType.CP.value:
+            self.parse_file_cp(inp)
+        else:
+            self.parse_file_jp(inp)
 
     def read_input(self, filename=None):
         if filename is None:
@@ -154,7 +167,22 @@ class JointEnsemble:
         else:
             self.find_probabilities_inner(table.transpose(), new_vars_to_add) # TODO also add 3d support
 
-    def parse_file(self, f_content):
+    def parse_file_cp(self, f_content):
+        var_set = set()
+        for line in f_content:
+            splitted_line = line.split()
+            if splitted_line[1] != "|":
+                raise Exception(f"input: {splitted_line} is not correct!")
+            first_var = splitted_line[0]
+            second_var = splitted_line[2]
+            value = splitted_line[3]
+            var_set.add(first_var)
+            var_set.add(second_var)
+            cond_prob = CondProbability([first_var, second_var], val=value)
+            self.cond_probabilities.append(cond_prob)
+
+
+    def parse_file_jp(self, f_content):
 
         for line in f_content:
             components = line.split()

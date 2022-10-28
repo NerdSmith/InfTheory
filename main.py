@@ -4,6 +4,9 @@ import os
 
 def main():
 
+    # je = JointEnsemble("task3_markov\\input1.txt")
+
+
     target_folder = "atta"
     for file in os.listdir(target_folder):
         je = JointEnsemble(target_folder + "\\" + file)
