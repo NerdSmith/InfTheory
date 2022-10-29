@@ -1,6 +1,17 @@
-from typing import List
+from typing import List, Union
 import numpy as np
 from TaskInpType import TInpType
+
+
+class Component:
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return f"{self.name}"
+
+    def __eq__(self, other: "Component"):
+        return other.name == self.name
 
 
 class ComponentIdx:
@@ -13,6 +24,31 @@ class ComponentIdx:
 
     def __eq__(self, other: "ComponentIdx"):
         return other.idx == self.idx and other.name == self.name
+
+
+class MarkovChProb:
+    def __init__(self, prefix, component):
+        self.prefix = prefix
+        self.component = component
+
+    def __str__(self):
+        return f"p({self.prefix} = {self.component})"
+
+
+class Equation:
+    class Term:
+        def __init__(self, multiplier: "CondProbability", mChProb):
+            self.multiplier: "CondProbability" = multiplier
+            self.mChProb = mChProb
+
+    def __init__(self):
+        self.res = None
+        self.terms = []
+
+
+class EqSystem:
+    def __init__(self):
+        self.eqs = []
 
 
 class JointProbability:
@@ -92,6 +128,7 @@ class JointEnsemble:
         self.probabilities: List[Probability] = []
         self.cond_probabilities = []
         self.joint_probabilities = []
+        self.eqSystem = EqSystem()
 
         self.parse(path)
 
@@ -113,6 +150,15 @@ class JointEnsemble:
             lines = f.readlines()
 
         return lines
+
+    def find_in_CP_by_comp_at_idx(self, comp, idx):
+        found = []
+        for cp in self.cond_probabilities:
+            if cp.components[idx] == comp:
+                found.append(cp)
+        return found
+
+
 
     def find_in_probabilities(self, prob: Probability):
         for p in self.probabilities:
@@ -169,7 +215,7 @@ class JointEnsemble:
 
     def parse_file_cp(self, f_content):
         var_set = set()
-        for line in f_content:
+        for line in f_content[1:]:
             splitted_line = line.split()
             if splitted_line[1] != "|":
                 raise Exception(f"input: {splitted_line} is not correct!")
@@ -178,12 +224,11 @@ class JointEnsemble:
             value = splitted_line[3]
             var_set.add(first_var)
             var_set.add(second_var)
-            cond_prob = CondProbability([first_var, second_var], val=value)
+            cond_prob = CondProbability([Component(first_var), Component(second_var)], val=value)
             self.cond_probabilities.append(cond_prob)
-
+        self.vars_ = sorted(list(var_set))
 
     def parse_file_jp(self, f_content):
-
         for line in f_content:
             components = line.split()
             if len(components) < 3:
@@ -202,6 +247,16 @@ class JointEnsemble:
             v, i = v_i.split("_")
             c_vars.append(ComponentIdx(v, int(i)))
         return c_vars
+
+    def build_eqSystem(self):
+        for var in self.vars_:
+            eq = Equation()
+            eq.res = MarkovChProb("X_i+1", Component(var))
+            for term_var in self.vars_:
+                cp = self.find_in_cond_probabilities([Component(var), Component(term_var)])
+                term = Equation.Term(cp, MarkovChProb("X_i", Component(term_var)))
+                eq.terms.append(term)
+            self.eqSystem.eqs.append(eq)
 
     def build_table(self, joint_probabilities):
         self.fill_vars_and_max_indices(joint_probabilities)
@@ -248,7 +303,7 @@ class JointEnsemble:
             else:
                 self.set_value(table_part, new_vars_to_add, new_values)
 
-    def find_in_cond_probabilities(self, components: List[ComponentIdx]):
+    def find_in_cond_probabilities(self, components: List[Union[ComponentIdx, Component]]):
         for cp in self.cond_probabilities:
             if cp.components == components:
                 return cp
