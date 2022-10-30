@@ -37,9 +37,9 @@ class MarkovChProb:
 
 class Equation:
     class Term:
-        def __init__(self, multiplier: "CondProbability", mChProb):
-            self.multiplier: "CondProbability" = multiplier
-            self.mChProb = mChProb
+        def __init__(self, multiplier: Union["CondProbability", float], m_ch_prob):
+            self.multiplier: Union["CondProbability", float] = multiplier
+            self.m_ch_prob = m_ch_prob
 
     def __init__(self):
         self.res = None
@@ -49,6 +49,26 @@ class Equation:
 class EqSystem:
     def __init__(self):
         self.eqs = []
+        self.matrix_A = []
+        self.matrix_B = []
+
+    def balance(self):
+        for eq in self.eqs:
+            res_component = eq.res.m_ch_prob.component
+            eq.res.multiplier -= 1
+            self.matrix_B = eq.res.multiplier
+            terms_4_matrix = []
+            for term in eq.terms:
+                if term.m_ch_prob.component == res_component:
+                    terms_4_matrix.append(term.multiplier.val - 1)
+                else:
+                    terms_4_matrix.append(term.multiplier.val)
+            self.matrix_A.append(terms_4_matrix)
+
+    def build_matrix(self):
+        # for eq in self.eqs:
+        #     matrix
+        pass
 
 
 class JointProbability:
@@ -128,7 +148,7 @@ class JointEnsemble:
         self.probabilities: List[Probability] = []
         self.cond_probabilities = []
         self.joint_probabilities = []
-        self.eqSystem = EqSystem()
+        self.eq_system = EqSystem()
 
         self.parse(path)
 
@@ -157,8 +177,6 @@ class JointEnsemble:
             if cp.components[idx] == comp:
                 found.append(cp)
         return found
-
-
 
     def find_in_probabilities(self, prob: Probability):
         for p in self.probabilities:
@@ -221,7 +239,7 @@ class JointEnsemble:
                 raise Exception(f"input: {splitted_line} is not correct!")
             first_var = splitted_line[0]
             second_var = splitted_line[2]
-            value = splitted_line[3]
+            value = float(splitted_line[3])
             var_set.add(first_var)
             var_set.add(second_var)
             cond_prob = CondProbability([Component(first_var), Component(second_var)], val=value)
@@ -248,15 +266,15 @@ class JointEnsemble:
             c_vars.append(ComponentIdx(v, int(i)))
         return c_vars
 
-    def build_eqSystem(self):
+    def build_eq_system(self):
         for var in self.vars_:
             eq = Equation()
-            eq.res = MarkovChProb("X_i+1", Component(var))
+            eq.res = Equation.Term(1.0, MarkovChProb("X_i+1", Component(var)))
             for term_var in self.vars_:
                 cp = self.find_in_cond_probabilities([Component(var), Component(term_var)])
                 term = Equation.Term(cp, MarkovChProb("X_i", Component(term_var)))
                 eq.terms.append(term)
-            self.eqSystem.eqs.append(eq)
+            self.eq_system.eqs.append(eq)
 
     def build_table(self, joint_probabilities):
         self.fill_vars_and_max_indices(joint_probabilities)
@@ -266,6 +284,9 @@ class JointEnsemble:
             shape.append(self.vars_max_indices[entry])
         self.table = np.zeros(shape=shape, dtype=np.float32)
         self.set_value(self.table, self.vars_, joint_probabilities)
+
+    def balance_eq_system(self):
+        self.eq_system.balance()
 
     def fill_vars_and_max_indices(self, joint_probabilities: List[JointProbability]):
         for jp in joint_probabilities:

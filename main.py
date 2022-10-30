@@ -5,7 +5,8 @@ import os
 def main():
 
     je = JointEnsemble("task3_markov\\input1.txt")
-    je.build_eqSystem()
+    je.build_eq_system()
+    je.balance_eq_system()
     print()
 
     # target_folder = "atta"
