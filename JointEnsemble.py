@@ -1,6 +1,7 @@
 from typing import List, Union
 import numpy as np
 from TaskInpType import TInpType
+from Utils import *
 
 
 class Component:
@@ -31,6 +32,9 @@ class MarkovChProb:
         self.prefix = prefix
         self.component = component
 
+    def component_str(self):
+        return self.__str__()
+
     def __str__(self):
         return f"p({self.prefix} = {self.component})"
 
@@ -47,38 +51,125 @@ class Equation:
 
 
 class EqSystem:
+    class Result:
+        def __init__(self, m_ch, val):
+            self.m_ch = m_ch
+            self.val = val
+
     def __init__(self):
         self.eqs = []
         self.matrix_A = []
         self.matrix_B = []
+        self.markov_terms: List[MarkovChProb] = []
+        self.to_remove_idx = 1 # row nb 2
+        self.solve_results = []
+
+    def remove_row(self):
+        del self.matrix_A[self.to_remove_idx]
+        del self.matrix_B[self.to_remove_idx]
+
+    def add_cond(self):
+        additional_eq = Equation()
+        additional_eq.res = 1
+        for term in self.eqs[0].terms:
+            m_ch_prob = term.m_ch_prob
+            self.markov_terms.append(m_ch_prob)
+            additional_eq.terms.append(Equation.Term(1, m_ch_prob))
+        self.eqs.append(additional_eq)
 
     def balance(self):
+        self.add_cond()
         for eq in self.eqs:
-            res_component = eq.res.m_ch_prob.component
-            eq.res.multiplier -= 1
-            self.matrix_B = eq.res.multiplier
-            terms_4_matrix = []
-            for term in eq.terms:
-                if term.m_ch_prob.component == res_component:
-                    terms_4_matrix.append(term.multiplier.val - 1)
-                else:
-                    terms_4_matrix.append(term.multiplier.val)
-            self.matrix_A.append(terms_4_matrix)
+            if not isinstance(eq.res, int):
+                res_component = eq.res.m_ch_prob.component
+                eq.res.multiplier -= 1
+                self.matrix_B.append([eq.res.multiplier])
+                terms_4_matrix = []
+                for term in eq.terms:
+                    if term.m_ch_prob.component == res_component:
+                        terms_4_matrix.append(term.multiplier.val - 1)
+                    else:
+                        terms_4_matrix.append(term.multiplier.val)
+                self.matrix_A.append(terms_4_matrix)
+            else:
+                self.matrix_B.append([1])
+                terms_4_matrix = []
+                for term in eq.terms:
+                    terms_4_matrix.append(term.multiplier)
+                self.matrix_A.append(terms_4_matrix)
 
-    def build_matrix(self):
-        # for eq in self.eqs:
-        #     matrix
-        pass
+    def solve_system(self):
+        self.remove_row()
 
+        AM = copy_matrix(self.matrix_A)
+        n = len(self.matrix_A)
+        BM = copy_matrix(self.matrix_B)
+
+        print_matrices('Starting Matrices are:', 'AM Matrix', AM,
+                       'IM Matrix', BM)
+        print()
+
+        indices = list(range(n))
+        for fd in range(n):
+            fdScaler = 1.0 / AM[fd][fd]
+
+            for j in range(n):
+                AM[fd][j] *= fdScaler
+            BM[fd][0] *= fdScaler
+
+            string1 = '\nUsing the matrices above, '
+            string1 += 'Scale row-{} of AM and BM by '
+            string2 = 'diagonal element {} of AM, '
+            string2 += 'which is 1/{:+.3f}.\n'
+            stringsum = string1 + string2
+            val1 = fd + 1
+            val2 = fd + 1
+            Action = stringsum.format(val1, val2, round(1. / fdScaler, 3))
+            print_matrices(Action, 'AM Matrix', AM, 'BM Matrix', BM)
+            print()
+
+            for i in indices[0:fd] + indices[fd + 1:]:
+                crScaler = AM[i][fd]
+                for j in range(n):
+                    AM[i][j] = AM[i][j] - crScaler * AM[fd][j]
+                BM[i][0] = BM[i][0] - crScaler * BM[fd][0]
+
+                string1 = 'Using matrices above, subtract {:+.3f} *'
+                string1 += 'row-{} of AM from row-{} of AM, and '
+                string2 = 'subtract {:+.3f} * row-{} of BM '
+                string2 += 'from row-{} of BM\n'
+                val1 = i + 1
+                val2 = fd + 1
+                stringsum = string1 + string2
+                Action = stringsum.format(crScaler, val2, val1,
+                                          crScaler, val2, val1)
+                print_matrices(Action, 'AM Matrix', AM,
+                               'BM Matrix', BM)
+
+        for i in zip(self.markov_terms, BM):
+            self.solve_results.append(self.Result(i[0], i[1][0]))
 
 class JointProbability:
-    def __init__(self, components, value):
+    def __init__(self, components=[], value=0, prob=None, cond_prob=None):
         self.components: List[ComponentIdx] = components
         self.value: float = value
+
+        self.prob = prob
+        self.cond_prob = cond_prob
+        self.prefixes = ["X_i = ", "X_i+1 = "]
+
+    def val(self):
+        return round(self.prob.val * self.cond_prob.val, 2)
 
     def components_str(self):
         r = "p("
         r += " ".join([str(c) for c in self.components])
+        r += ")"
+        return r
+
+    def component_str(self):
+        r = "p("
+        r += " ".join([c[0] + str(c[1]) for c in zip(self.prefixes, reversed(self.cond_prob.components))])
         r += ")"
         return r
 
@@ -231,6 +322,20 @@ class JointEnsemble:
         else:
             self.find_probabilities_inner(table.transpose(), new_vars_to_add) # TODO also add 3d support
 
+    def find_in_res(self, component: Component):
+        for res in self.eq_system.solve_results:
+            ch = res.m_ch
+            if ch.component == component:
+                return res
+        return None
+
+    def calc_join_probabilities(self):
+        for c in self.vars_:
+            prob = self.find_in_res(Component(c))
+            components_of_cp = self.find_in_CP_by_comp_at_idx(Component(c), 1)
+            for inner_c in components_of_cp:
+                self.joint_probabilities.append(JointProbability(prob=prob, cond_prob=inner_c))
+
     def parse_file_cp(self, f_content):
         var_set = set()
         for line in f_content[1:]:
@@ -287,6 +392,9 @@ class JointEnsemble:
 
     def balance_eq_system(self):
         self.eq_system.balance()
+
+    def solve_eq_system(self):
+        self.eq_system.solve_system()
 
     def fill_vars_and_max_indices(self, joint_probabilities: List[JointProbability]):
         for jp in joint_probabilities:

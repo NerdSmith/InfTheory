@@ -7,6 +7,12 @@ def main():
     je = JointEnsemble("task3_markov\\input1.txt")
     je.build_eq_system()
     je.balance_eq_system()
+    je.solve_eq_system()
+    e = Entropy(je)
+    e.calc_simple_entropy()
+    je.calc_join_probabilities()
+    e.calc_simple_entropy_with_JP()
+    e.calc_cond_entropy()
     print()
 
     # target_folder = "atta"
