@@ -7,6 +7,7 @@ def main():
     for file in os.listdir(target_folder):
         print("{:-^50s}".format(file))
         je = JointEnsemble(target_folder + "\\" + file)
+        je.draw_graph()
         je.build_eq_system()
         je.balance_eq_system()
         je.print_m_probs()
