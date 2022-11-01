@@ -519,7 +519,7 @@ class JointEnsemble:
         G = nx.DiGraph()
         edge_list = []
         for cp in self.cond_probabilities:
-            edge_list.append((*[c.name for c in cp.components], {'w': f"{cp.val}"}))
+            edge_list.append((*reversed([c.name for c in cp.components]), {'w': f"{cp.val}"}))
         G.add_edges_from(edge_list)
         pos = nx.spring_layout(G, seed=4)
         fig, ax = plt.subplots()
@@ -528,12 +528,6 @@ class JointEnsemble:
         curved_edges = [edge for edge in G.edges() if reversed(edge) in G.edges()]
         arc_rad = 0.2
         nx.draw_networkx_edges(G, pos, ax=ax, edgelist=curved_edges, arrowsize=20, connectionstyle=f'arc3, rad = {arc_rad}')
-        # edge_labels = dict([((u, v,), f'{d["w"]}\n\n{G.edges[(v, u)]["w"]}')
-                            # for u, v, d in G.edges(data=True) if pos[u][0] > pos[v][0]])
-        # labels = nx.get_edge_attributes(G,'w')
-        # nx.set_edge_attributes(G, {(e[0], e[1]): {'label': e[2]['weight']} for e in G.edges(data=True)})
-        # nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
-        # nx.set_edge_attributes(G, {(e[0], e[1]): {'label': e[2]['w']} for e in G.edges(data=True)})
         edge_labels = dict()
         for u, v, d in G.edges(data=True):
             if pos[u][0] > pos[v][0]:
@@ -542,17 +536,12 @@ class JointEnsemble:
                 edge_labels[(u, v,)] = f'{d["w"]}'
             else:
                 continue
-
         pos_higher = {}
-        y_off = 0.2  # offset on the y axis
+        y_off = 0.2
 
         for k, v in pos.items():
             pos_higher[k] = (v[0], v[1] + y_off)
-        # edge_labels = dict([((u, v,), f'{d["w"]}\n\n{G.edges[(v, u)]["w"]}')
-        #                     for u, v, d in G.edges(data=True) if pos[u][0] > pos[v][0]])
+
         nx.draw_networkx_edge_labels(G, pos_higher, verticalalignment="center_baseline", edge_labels=edge_labels)
-        # D = nx.drawing.nx_agraph.to_agraph(G)
-
-
         plt.show()
 
