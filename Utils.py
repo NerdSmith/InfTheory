@@ -7,13 +7,15 @@ def print_matrix(Title, M):
         print([round(x, 3) + 0 for x in row])
 
 
-def print_matrices(Action, Title1, M1, Title2, M2):
+def print_matrices(Action, M1, M2, markov_terms, to_remove_idx=None):
     print(Action)
-    print(Title1, '\t' * int(len(M1) / 2) + "\t" * len(M1), Title2)
+    # print(Title1, '\t' * int(len(M1) / 2) + "\t" * len(M1), Title2)
     for i in range(len(M1)):
-        row1 = ['{0:+7.3f}'.format(x) for x in M1[i]]
-        row2 = ['{0:+7.3f}'.format(x) for x in M2[i]]
-        print(row1, '\t', row2)
+        if i == to_remove_idx:
+            continue
+        row1 = " + ".join(['{0:-.3f}'.format(x[0]) + " * " + str(x[1]) for x in zip(M1[i], markov_terms)])
+        row2 = "".join(['{0:.3f}'.format(x) for x in M2[i]])
+        print(row1, '=', row2)
 
 
 def zeros_matrix(rows, cols):

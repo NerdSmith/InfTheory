@@ -29,13 +29,13 @@ class BinaryEntropy:
             if self.val == 0:
                 return 0
             else:
-                return self.val * np.log2(self.val)
+                return np.round(self.val, 4) * np.log2(np.round(self.val, 4))
 
         def calc_component_str(self):
             return f"{self.m_ch.component_str()} * log2({self.m_ch.component_str()})"
 
         def calc_value_str(self):
-            return f"{self.val} * log2({self.val})"
+            return f"{np.round(self.val, 4)} * log2({np.round(self.val, 4)})"
 
     def __init__(self, name):
         self.name = name
@@ -175,11 +175,23 @@ class ConditionalEntropy:
 
 class SimpleCondEntropy:
     def __init__(self, binary_e, binary_e_jp):
-        self.binary_e = binary_e
-        self.binary_e_jp = binary_e_jp
+        self.binary_e: BinaryEntropy = binary_e
+        self.binary_e_jp: BinaryEntropy = binary_e_jp
 
     def value(self):
         return self.binary_e_jp.value() - self.binary_e.value()
+
+    def component_str(self):
+        return "H_x_i(X_i+1)"
+
+    def calc_component_str(self):
+        return f"{self.binary_e_jp.component_str()} - {self.binary_e.component_str()}"
+
+    def calc_value_str(self):
+        return f"{self.binary_e_jp.value()} - {self.binary_e.value()}"
+
+    def get_calc_repr_str(self):
+        return f"{self.component_str()} = {self.calc_component_str()} = {self.calc_value_str()} = {self.value()}"
 
 class Entropy:
     def __init__(self, je: JointEnsemble):
@@ -199,14 +211,13 @@ class Entropy:
 
     def calc_cond_entropy(self):
         self.simple_cond_entropy = SimpleCondEntropy(self.binary_entropies[0], self.binary_entropies_with_jp[0])
-        print(self.simple_cond_entropy.value())
+        # print(self.simple_cond_entropy.value())
 
     def calc_simple_entropy(self):
         new_b_entropy = BinaryEntropy("X_i")
         for res in self.je.eq_system.solve_results:
             new_b_entropy.sum_components.append(BinaryEntropy.MSumComponent(res.m_ch, res.val))
         self.binary_entropies.append(new_b_entropy)
-        print(new_b_entropy.get_calc_repr_str())
 
     def calc_simple_entropy_with_JP(self):
         new_b_entropy = BinaryEntropy("X_i X_i+1")
@@ -216,7 +227,7 @@ class Entropy:
         # for res in self.je.eq_system.solve_results:
         #     new_b_entropy.sum_components.append(BinaryEntropy.MSumComponent(res.m_ch, res.val))
         # self.binary_entropies.append(new_b_entropy)
-        print(new_b_entropy.get_calc_repr_str())
+        # print(new_b_entropy.get_calc_repr_str())
 
     def calc_binary_entropy(self):
         for var, max_i in self.je.vars_max_indices.items():
@@ -256,6 +267,19 @@ class Entropy:
                 curr_p_c_e = self.find_in_p_c_e(PartialConditionalEntropy(var, cond_name, curr_cond_idx + 1))
                 ce.sum_components.append(ConditionalEntropy.SumComponent(prob, curr_p_c_e))
             self.conditional_entropies.append(ce)
+
+    def print_M_be(self):
+        print("\nЭнтропия H(X_i):")
+        print(self.binary_entropies[0].get_calc_repr_str())
+
+    def print_M_be_with_jp(self):
+        print("\nЭнтропия H(X_i X_i+1):")
+        print(self.binary_entropies_with_jp[0].get_calc_repr_str())
+
+    def print_cond_entropy(self):
+        print("\nУсловная вероятность H_x_i(X_i+1)")
+        print(self.simple_cond_entropy.get_calc_repr_str())
+
 
     def print_res(self):
         print("{:-^50s}".format(self.je.filename))

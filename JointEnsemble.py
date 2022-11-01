@@ -38,6 +38,9 @@ class MarkovChProb:
     def __str__(self):
         return f"p({self.prefix} = {self.component})"
 
+    def __str__short__(self):
+        return f"p_{self.component}"
+
 
 class Equation:
     class Term:
@@ -45,16 +48,24 @@ class Equation:
             self.multiplier: Union["CondProbability", float] = multiplier
             self.m_ch_prob = m_ch_prob
 
+        def __str__(self):
+            return f"{'' if self.multiplier == 1 else str(self.multiplier.val) + ' * '}{self.m_ch_prob}"
+
     def __init__(self):
         self.res = None
         self.terms = []
 
+    def get_calc_repr_str(self):
+        return f"{self.res} = {' + '.join([str(term) for term in self.terms])}"
 
 class EqSystem:
     class Result:
         def __init__(self, m_ch, val):
             self.m_ch = m_ch
             self.val = val
+
+        def __str__(self):
+            return f"{self.m_ch.__str__short__()} = {np.round(self.val, 4)}"
 
     def __init__(self):
         self.eqs = []
@@ -65,6 +76,7 @@ class EqSystem:
         self.solve_results = []
 
     def remove_row(self):
+        print(f"Убираем строку {self.to_remove_idx + 1}, потому что ... ДА\n")
         del self.matrix_A[self.to_remove_idx]
         del self.matrix_B[self.to_remove_idx]
 
@@ -82,8 +94,8 @@ class EqSystem:
         for eq in self.eqs:
             if not isinstance(eq.res, int):
                 res_component = eq.res.m_ch_prob.component
-                eq.res.multiplier -= 1
-                self.matrix_B.append([eq.res.multiplier])
+                # eq.res.multiplier -= 1
+                self.matrix_B.append([eq.res.multiplier - 1])
                 terms_4_matrix = []
                 for term in eq.terms:
                     if term.m_ch_prob.component == res_component:
@@ -105,9 +117,7 @@ class EqSystem:
         n = len(self.matrix_A)
         BM = copy_matrix(self.matrix_B)
 
-        print_matrices('Starting Matrices are:', 'AM Matrix', AM,
-                       'IM Matrix', BM)
-        print()
+        print_matrices('Изначальная система:', AM, BM, self.markov_terms)
 
         indices = list(range(n))
         for fd in range(n):
@@ -117,15 +127,15 @@ class EqSystem:
                 AM[fd][j] *= fdScaler
             BM[fd][0] *= fdScaler
 
-            string1 = '\nUsing the matrices above, '
-            string1 += 'Scale row-{} of AM and BM by '
-            string2 = 'diagonal element {} of AM, '
-            string2 += 'which is 1/{:+.3f}.\n'
+            string1 = '\nИспользуя систему выше, '
+            string1 += 'масштабируем строку-{} (левую и правую части) по '
+            string2 = 'диагональному элементу {} левой части, '
+            string2 += 'который равен 1/{:+.3f}.\n'
             stringsum = string1 + string2
             val1 = fd + 1
             val2 = fd + 1
             Action = stringsum.format(val1, val2, round(1. / fdScaler, 3))
-            print_matrices(Action, 'AM Matrix', AM, 'BM Matrix', BM)
+            print_matrices(Action, AM, BM, self.markov_terms)
             print()
 
             for i in indices[0:fd] + indices[fd + 1:]:
@@ -134,17 +144,16 @@ class EqSystem:
                     AM[i][j] = AM[i][j] - crScaler * AM[fd][j]
                 BM[i][0] = BM[i][0] - crScaler * BM[fd][0]
 
-                string1 = 'Using matrices above, subtract {:+.3f} *'
-                string1 += 'row-{} of AM from row-{} of AM, and '
-                string2 = 'subtract {:+.3f} * row-{} of BM '
-                string2 += 'from row-{} of BM\n'
+                string1 = 'Используя систему выше, вычтем {:+.3f} * '
+                string1 += '(левую часть ряда-{}) из левой части ряда-{}, и '
+                string2 = 'вычтем {:+.3f} * (правую часть ряда-{}) '
+                string2 += 'из левой части ряда-{}\n'
                 val1 = i + 1
                 val2 = fd + 1
                 stringsum = string1 + string2
                 Action = stringsum.format(crScaler, val2, val1,
                                           crScaler, val2, val1)
-                print_matrices(Action, 'AM Matrix', AM,
-                               'BM Matrix', BM)
+                print_matrices(Action, AM, BM, self.markov_terms)
 
         for i in zip(self.markov_terms, BM):
             self.solve_results.append(self.Result(i[0], i[1][0]))
@@ -159,7 +168,7 @@ class JointProbability:
         self.prefixes = ["X_i = ", "X_i+1 = "]
 
     def val(self):
-        return round(self.prob.val * self.cond_prob.val, 2)
+        return round(self.prob.val * self.cond_prob.val, 3)
 
     def components_str(self):
         r = "p("
@@ -169,10 +178,18 @@ class JointProbability:
 
     def component_str(self):
         r = "p("
-        r += " ".join([c[0] + str(c[1]) for c in zip(self.prefixes, reversed(self.cond_prob.components))])
+        r += ", ".join([c[0] + str(c[1]) for c in zip(self.prefixes, reversed(self.cond_prob.components))])
         r += ")"
         return r
 
+    def get_names_calc_str(self):
+        return f"{self.prob.m_ch.__str__short__()} * {self.cond_prob.component_str()}"
+
+    def get_values_calc_str(self):
+        return f"{np.round(self.prob.val, 4)} * {self.cond_prob.val}"
+
+    def get_calc_repr_str(self):
+        return f"{self.component_str()} = {self.get_names_calc_str()} = {self.get_values_calc_str()} = {self.val()}"
 
 class CondProbability:
     def __init__(self, components, jp=None, p=None, val=None):
@@ -479,3 +496,20 @@ class JointEnsemble:
         print("{:-^50s}".format("-"*len(self.filename)))
         self.is_ensembles_dependent()
         print("{:-^50s}".format("-"*len(self.filename)))
+
+    def print_m_probs(self):
+        for eq in self.eq_system.eqs[:-1]:
+            print(eq.get_calc_repr_str())
+        print("Добавляем дополнительное условие Σ_s_j∈{a,b,c} p_s_j = 1\n")
+        for eq in self.eq_system.eqs:
+            print(eq.get_calc_repr_str())
+
+    def print_solve_res(self):
+        print("\nЗначения вероятностей стационарного распределения заданной марковской цепи равны:")
+        for sr in self.eq_system.solve_results:
+            print(sr)
+
+    def print_jps(self):
+        print("\nСовместные вероятности:")
+        for jp in self.joint_probabilities:
+            print(jp.get_calc_repr_str())

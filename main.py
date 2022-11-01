@@ -3,17 +3,25 @@ from Entropy import Entropy
 import os
 
 def main():
-
-    je = JointEnsemble("task3_markov\\input1.txt")
-    je.build_eq_system()
-    je.balance_eq_system()
-    je.solve_eq_system()
-    e = Entropy(je)
-    e.calc_simple_entropy()
-    je.calc_join_probabilities()
-    e.calc_simple_entropy_with_JP()
-    e.calc_cond_entropy()
-    print()
+    target_folder = "task3_markov"
+    for file in os.listdir(target_folder):
+        print("{:-^50s}".format(file))
+        je = JointEnsemble(target_folder + "\\" + file)
+        je.build_eq_system()
+        je.balance_eq_system()
+        je.print_m_probs()
+        je.solve_eq_system()
+        je.print_solve_res()
+        e = Entropy(je)
+        e.calc_simple_entropy()
+        e.print_M_be()
+        je.calc_join_probabilities()
+        je.print_jps()
+        e.calc_simple_entropy_with_JP()
+        e.print_M_be_with_jp()
+        e.calc_cond_entropy()
+        e.print_cond_entropy()
+        print("{:-^50s}".format("-" * len(file)))
 
     # target_folder = "atta"
     # for file in os.listdir(target_folder):
