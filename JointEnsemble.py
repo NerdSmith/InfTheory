@@ -370,7 +370,7 @@ class JointEnsemble:
         self.vars_ = sorted(list(var_set))
 
     def parse_file_jp(self, f_content):
-        for line in f_content:
+        for line in f_content[1:]:
             components = line.split()
             if len(components) < 3:
                 raise Exception("err in vars declaration")
