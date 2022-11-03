@@ -127,18 +127,15 @@ class HuffGraph:
         return layer
 
     def draw_graph(self):
+        plt.title("Huffman")
         G = nx.Graph()
-        # for n in self.base_layer:
-        #     G.add_node(n)
-        # G.add_edge(self.base_layer[0], self.base_layer[1])
-        # G.add_edge(self.base_layer[1], self.base_layer[2])
         self.dfs_connect(self.connect, G)
         nx.draw(G, with_labels=True)
         plt.show()
 
     def print_codes_and_Ls(self):
         for i, node in enumerate(self.base_layer):
-            print(f"{node.prob.name} = {node.prob.value():5} = {node.get_code():10} \t\t\tL{i} = {node.get_L()}")
+            print(f"{node.prob.name:3} = {node.prob.value():5} = {node.get_code():10} \t\t\tL{i} = {node.get_L()}")
 
     def print_L(self):
         components = []
@@ -158,13 +155,13 @@ class HuffGraph:
             results.append(np.round(i.prob.value() * np.log2(i.prob.value()), 4))
         res = np.round(-sum(results), 4)
         self.H = res
-        print(f"H = -( {' + '.join(components)} ) = -( {' + '.join([str(i) for i in results])} ) = {res}")
+        print(f"H = -( {' + '.join(components)} ) = -( {' '.join([str(i) for i in results])} ) = {res}")
 
     def print_r(self):
         print(f"r = L - H = {self.L} - {self.H} = {np.round(self.L - self.H, 4)}")
 
 
 if __name__ == '__main__':
-    e = Encoding("task3_huffman_fano\\input2.txt")
+    e = Encoding("task3_huffman_fano\\input1.txt")
     hg = HuffGraph(e.probabilities)
     print()
