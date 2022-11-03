@@ -4,6 +4,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 from time import time
+from Encoding import Probability, Encoding
 # from networkx.drawing.nx_agraph import graphviz_layout
 
 from TaskInpType import TInpType
@@ -13,7 +14,7 @@ class HuffGraph:
     class Node:
         def __init__(self):
             self.prob: Union[Probability, None] = None
-            self.parent: Union[Probability, None] = None
+            self.parent: Union[HuffGraph.Node, None] = None
             self.children: List[HuffGraph.Node] = []
             self.creation_time = time()
 
@@ -163,47 +164,7 @@ class HuffGraph:
         print(f"r = L - H = {self.L} - {self.H} = {np.round(self.L - self.H, 4)}")
 
 
-class Probability:
-    def __init__(self, name: str, val: float):
-        self.name: str = name
-        self.val: float = val
-
-    def value(self):
-        return np.round(self.val, 4)
-
-
-class HuffmanEncoding:
-    def __init__(self, filename):
-        self.filename = filename
-        self.probabilities = []
-
-        self.parse()
-
-    def read_input(self, filename=None):
-        if filename is None:
-            pass
-        lines = []
-        self.filename = filename
-        with open(filename, "r") as f:
-            lines = f.readlines()
-
-        return lines
-
-    def parse(self):
-        inp = self.read_input(self.filename)
-        str_inp_type = inp[0].split("#")[0].strip()
-
-        if str_inp_type == TInpType.CODE.value:
-            self.parse_file(inp)
-
-    def parse_file(self, inp):
-        for line in inp[1:]:
-            name, val = line.split()
-            val = float(val)
-            self.probabilities.append(Probability(name, val))
-
-
 if __name__ == '__main__':
-    he = HuffmanEncoding("task3_huffman_fano\\input2.txt")
-    hg = HuffGraph(he.probabilities)
+    e = Encoding("task3_huffman_fano\\input2.txt")
+    hg = HuffGraph(e.probabilities)
     print()
