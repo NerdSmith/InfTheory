@@ -4,7 +4,7 @@ from Fano import FanoGraph
 import os
 
 def main():
-    target_folder = "task3_huffman_fano"
+    target_folder = "atta_2_hf"
     for file in os.listdir(target_folder):
         print("{:-^50s}".format(file))
         e = Encoding(target_folder + "\\" + file)

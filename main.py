@@ -3,7 +3,7 @@ from Entropy import Entropy
 import os
 
 def main():
-    target_folder = "task3_markov"
+    target_folder = "atta_2"
     for file in os.listdir(target_folder):
         print("{:-^50s}".format(file))
         je = JointEnsemble(target_folder + "\\" + file)

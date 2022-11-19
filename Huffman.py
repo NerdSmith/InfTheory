@@ -85,14 +85,14 @@ class HuffGraph:
             if node.is_last_leaf():
                 return
             else:
-                left = node.children[0]
-                right = node.children[1]
+                left = node.children[1]
+                right = node.children[0]
                 parent = node
                 dfs_inner(left, visitor, parent, g)
                 dfs_inner(right, visitor, parent, g)
 
-        left = self.head.children[0]
-        right = self.head.children[1]
+        left = self.head.children[1]
+        right = self.head.children[0]
         parent = self.head
         dfs_inner(left, visitor, parent, g)
         dfs_inner(right, visitor, parent, g)
@@ -106,14 +106,14 @@ class HuffGraph:
                 left = node.children[0]
                 right = node.children[1]
                 parent = node
-                dfs_inner(left, visitor, parent, '0')
-                dfs_inner(right, visitor, parent, '1')
+                dfs_inner(left, visitor, parent, '1')
+                dfs_inner(right, visitor, parent, '0')
 
         left = self.head.children[0]
         right = self.head.children[1]
         parent = self.head
-        dfs_inner(left, visitor, parent, '0')
-        dfs_inner(right, visitor, parent, '1')
+        dfs_inner(left, visitor, parent, '1')
+        dfs_inner(right, visitor, parent, '0')
 
     def compute_code(self):
         self.dfs(self.add_code)
