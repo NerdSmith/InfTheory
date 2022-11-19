@@ -106,14 +106,14 @@ class HuffGraph:
                 left = node.children[0]
                 right = node.children[1]
                 parent = node
-                dfs_inner(left, visitor, parent, '1')
-                dfs_inner(right, visitor, parent, '0')
+                dfs_inner(left, visitor, parent, '0')
+                dfs_inner(right, visitor, parent, '1')
 
         left = self.head.children[0]
         right = self.head.children[1]
         parent = self.head
-        dfs_inner(left, visitor, parent, '1')
-        dfs_inner(right, visitor, parent, '0')
+        dfs_inner(left, visitor, parent, '0')
+        dfs_inner(right, visitor, parent, '1')
 
     def compute_code(self):
         self.dfs(self.add_code)
