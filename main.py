@@ -3,26 +3,28 @@ from Entropy import Entropy
 import os
 
 def main():
-    target_folder = "atta_2"
+    target_folder = "task4_e_encoding"
     for file in os.listdir(target_folder):
         print("{:-^50s}".format(file))
-        je = JointEnsemble(target_folder + "\\" + file)
-        je.draw_graph()
-        je.build_eq_system()
-        je.balance_eq_system()
-        je.print_m_probs()
-        je.solve_eq_system()
-        je.print_solve_res()
-        e = Entropy(je)
-        e.calc_simple_entropy()
-        e.print_M_be()
-        je.calc_join_probabilities()
-        je.print_jps()
-        e.calc_simple_entropy_with_JP()
-        e.print_M_be_with_jp()
-        e.calc_cond_entropy()
-        e.print_cond_entropy()
-        print("{:-^50s}".format("-" * len(file)))
+
+
+        # je = JointEnsemble(target_folder + "\\" + file)
+        # je.draw_graph()
+        # je.build_eq_system()
+        # je.balance_eq_system()
+        # je.print_m_probs()
+        # je.solve_eq_system()
+        # je.print_solve_res()
+        # e = Entropy(je)
+        # e.calc_simple_entropy()
+        # e.print_M_be()
+        # je.calc_join_probabilities()
+        # je.print_jps()
+        # e.calc_simple_entropy_with_JP()
+        # e.print_M_be_with_jp()
+        # e.calc_cond_entropy()
+        # e.print_cond_entropy()
+        # print("{:-^50s}".format("-" * len(file)))
 
     # target_folder = "atta"
     # for file in os.listdir(target_folder):
