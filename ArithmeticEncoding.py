@@ -13,14 +13,25 @@ class S_i:
     def __init__(self, str_repr):
         self.idx = extract_digits(str_repr)
 
+    def __eq__(self, other):
+        return other.idx == self.idx
+
+    def __str__(self):
+        return f"s{self.idx}"
+
 
 class Prob:
     def __init__(self, curr_s_i: S_i, value: float):
         self.curr_s_i = curr_s_i
         self.value = value
 
+    def __str__(self):
+        return f"p({str(self.curr_s_i)})={self.value}"
+
+
 class Q_S_i:
-    def __init__(self, curr_Q_S_i: "Q_S_i" = None, curr_prob: Prob = None):
+    def __init__(self, curr_idx, curr_Q_S_i: "Q_S_i" = None, curr_prob: Prob = None):
+        self.curr_idx = curr_idx
         self.curr_Q_S_i = curr_Q_S_i
         self.curr_prob = curr_prob
 
@@ -32,16 +43,184 @@ class Q_S_i:
             res += self.curr_prob.value
         return res
 
+    def __str__(self):
+        if self.curr_Q_S_i is not None:
+            return f"q(s{self.curr_idx})={self.curr_Q_S_i.val()}+{self.curr_prob.value}={self.val()}"
+        return "0"
+
+    def __eq__(self, other):
+        return other.curr_idx == self.curr_idx
+
+
+class G_S_ik:
+    def __init__(self, curr_prob: Prob = None, prev_G_S_ik: "G_S_ik" = None):
+        self.curr_prob = curr_prob
+        self.prev_G_S_ik = prev_G_S_ik
+
+    def val(self):
+        if self.curr_prob is None:
+            return 1
+        else:
+            return np.round(self.curr_prob.value * self.prev_G_S_ik.val(), 16)
+
+    def __str__(self):
+        if self.curr_prob is not None:
+            return f"{self.curr_prob.value}*{self.prev_G_S_ik.val()}={self.val()}"
+        return "1"
+
+class F_S_ik:
+    def __init__(self,
+                 prev_f_s_ik: "F_S_ik" = None,
+                 curr_q_s_i: Q_S_i = None,
+                 prev_g_s_ik: G_S_ik = None):
+        self.prev_f_s_ik = prev_f_s_ik
+        self.curr_q_s_i = curr_q_s_i
+        self.prev_g_s_ik = prev_g_s_ik
+
+    def val(self):
+        if self.prev_f_s_ik is None:
+            return 0
+        else:
+            return self.prev_f_s_ik.val() + self.curr_q_s_i.val() * self.prev_g_s_ik.val()
+
+    def __str__(self):
+        if self.prev_f_s_ik is not None:
+            return f"{self.prev_f_s_ik.val()}+{self.curr_q_s_i.val()}*{self.prev_g_s_ik.val()}={self.val()}"
+        return "0"
+
+
+class Layer:
+    def __init__(self, ae: "AEncoding",  prev_layer=None):
+        self.ae = ae
+        self.seq = ae.seq
+
+        self.step = 0
+        self.idx = 1
+        self.curr_s_i = None
+        self.curr_s_ik = []
+        self.curr_p_s_i = None
+
+        self.curr_q_s_i: Q_S_i = self.ae.find_q_s_i_by_idx(1)[0]
+        self.curr_F_s_ik = F_S_ik()
+        self.curr_G_s_ik = G_S_ik()
+
+        self.fill_by_prev_layer(prev_layer)
+
+    def build(self):
+        self.str_step = str(self.step)
+        self.str_idx = str(self.idx)
+        self.str_s_i = str(self.curr_s_i) if self.curr_s_i is not None else '-'
+        self.str_s_ik = ''.join(list(map(str, self.curr_s_ik))) if len(self.curr_s_ik) > 0 else '-'
+        self.str_p_s_i = str(self.curr_p_s_i) if self.curr_s_i is not None else '-'
+        self.str_q_s_i = str(self.curr_q_s_i)
+        self.str_F_s_ik = str(self.curr_F_s_ik)
+        self.str_G_s_ik = str(self.curr_G_s_ik)
+        self.str_vars = {
+            "step": len(self.str_step),
+            "idx": len(self.str_idx),
+            "s_i": len(self.str_s_i),
+            "s_ik": len(self.str_s_ik),
+            "p_s_i": len(self.str_p_s_i),
+            "q_s_i": len(self.str_q_s_i),
+            "F_s_ik": len(self.str_F_s_ik),
+            "G_s_ik": len(self.str_G_s_ik)
+        }
+
+
+    def to_str(self, max_len_dict):
+        return f"{self.step:{max_len_dict['step']}} | " \
+               f"{self.idx:{max_len_dict['idx']}} | " \
+               f"{str(self.curr_s_i) if self.curr_s_i is not None else '-':{max_len_dict['s_i']}} | " \
+               f"{''.join(list(map(str, self.curr_s_ik))) if len(self.curr_s_ik) > 0 else '-':{max_len_dict['s_ik']}} | " \
+               f"{str(self.curr_p_s_i) if self.curr_s_i is not None else '-':{max_len_dict['p_s_i']}} | " \
+               f"{str(self.curr_q_s_i):{max_len_dict['q_s_i']}} | " \
+               f"{str(self.curr_F_s_ik):{max_len_dict['F_s_ik']}} | " \
+               f"{str(self.curr_G_s_ik):{max_len_dict['G_s_ik']}}"
+
+    def get_seq_idx(self):
+        idx = self.step - 1
+        if idx < 0:
+            raise Exception("idx < 0 exception")
+        return idx
+
+    def get_s_idx(self):
+        return self.curr_s_i.idx
+
+    def fill_by_prev_layer(self, prev_layer: "Layer"):
+        if prev_layer is not None:
+            self.step = prev_layer.step + 1
+            self.idx = prev_layer.idx + 1
+
+            self.curr_s_i = S_i(str(self.seq[self.get_seq_idx()]))
+
+            self.curr_s_ik.extend(prev_layer.curr_s_ik)
+            self.curr_s_ik.append(self.curr_s_i)
+            self.curr_p_s_i = self.ae.find_p_s_i_by_s_i(self.curr_s_i)
+
+            self.curr_q_s_i = self.ae.find_q_s_i_by_idx(self.get_s_idx())[0]
+
+            self.curr_G_s_ik = G_S_ik(self.curr_p_s_i, prev_layer.curr_G_s_ik)
+
+            self.curr_F_s_ik = F_S_ik(prev_layer.curr_F_s_ik, self.curr_q_s_i, prev_layer.curr_G_s_ik)
+
+
 class AEncoding:
 
     def __init__(self, filename):
         self.filename = filename
         self.s_i_s = []
         self.probs = []
+        self.q_s_i_s = []
         self.seq = []
+
+        self.layers: List[Layer] = []
 
         self.parse(filename)
         self.max_i = max([x.idx for x in self.s_i_s])
+        self.compute_q_i_s()
+
+    def build_layers(self):
+        prev_layer = None
+        for i in range(len(self.seq) + 1):
+            new_layer = Layer(self, prev_layer)
+            new_layer.build()
+            self.layers.append(new_layer)
+            prev_layer = new_layer
+        self.compute_max_val_len()
+
+    def compute_max_val_len(self):
+        curr_vals = self.layers[0].str_vars
+        for l in self.layers[1:]:
+            for key in l.str_vars.keys():
+                if curr_vals[key] < l.str_vars[key]:
+                    curr_vals[key] = l.str_vars[key]
+        self.max_vars_len = curr_vals
+
+    def print_layers(self):
+        for l in self.layers:
+            print(l.to_str(self.max_vars_len))
+
+
+    def find_q_s_i_by_idx(self, idx):
+        return [x for x in self.q_s_i_s if x.curr_idx == idx]
+
+    def compute_q_i_s(self):
+        for i in range(self.max_i):
+            idx = i + 1
+            q_s_i_s = self.find_q_s_i_by_idx(idx - 1)
+            p_s_i_s = self.find_p_s_i_by_idx(idx - 1)
+
+            if len(q_s_i_s) == 0:
+                q_s_i_s = None
+            else:
+                q_s_i_s = q_s_i_s[0]
+            if len(p_s_i_s) == 0:
+                p_s_i_s = None
+            else:
+                p_s_i_s = p_s_i_s[0]
+            new_q_s_i = Q_S_i(idx, q_s_i_s, p_s_i_s)
+            self.q_s_i_s.append(new_q_s_i)
+
 
     def read_input(self, filename=None):
         if filename is None:
@@ -65,6 +244,9 @@ class AEncoding:
     def find_s_i_by_idx(self, idx):
         return [x for x in self.s_i_s if x.idx == idx][0]
 
+    def find_p_s_i_by_s_i(self, curr_s_i: S_i):
+        return [x for x in self.probs if x.curr_s_i == curr_s_i][0]
+
     def parse_file(self, f_content):
         for line in f_content[1:]:
             if line.startswith("s"):
@@ -79,7 +261,22 @@ class AEncoding:
                     found = self.find_s_i_by_idx(extracted)
                     self.seq.append(found)
 
+    def find_p_s_i_by_idx(self, idx):
+        return [x for x in self.probs if x.curr_s_i.idx == idx]
+
 
 if __name__ == '__main__':
     ae = AEncoding("task4_a_encoding/input1.txt")
+    ae.build_layers()
+    ae.print_layers()
+
+    # l1 = Layer(ae)
+    # l2 = Layer(ae, l1)
+    # l3 = Layer(ae, l2)
+    # l4 = Layer(ae, l1)
+    # l5 = Layer(ae, l2)
+    # l2 = Layer(ae, l1)
+    # print(l1.to_str())
+    # print(l2.to_str())
+    # print(l3.to_str())
     print()
