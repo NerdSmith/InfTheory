@@ -91,6 +91,8 @@ class F_S_ik:
 
 class Layer:
     def __init__(self, ae: "AEncoding",  prev_layer=None):
+        self.draw_line_len = 200
+
         self.ae = ae
         self.seq = ae.seq
 
@@ -126,6 +128,26 @@ class Layer:
             "G_s_ik": len(self.str_G_s_ik)
         }
 
+    def draw(self):
+        line = ["-" for i in range(self.draw_line_len)]
+        line[0] = "|"
+        line[-1] = "|"
+        prev_val_to_mark = 0
+        for p in self.ae.probs:
+            val_to_mark = prev_val_to_mark + self.draw_line_len * p.value
+            idx_to_mark = int(np.round(val_to_mark)) - 1
+            line[idx_to_mark] = "|"
+            prev_val_to_mark = val_to_mark
+
+
+
+        print(
+            f"""
+            \r{'':+<5}
+            \r{'':+<5}{''.join(line)}
+            \r{'':+<5}
+            """
+        )
 
     def to_str(self, max_len_dict):
         return f"{self.step:{max_len_dict['step']}} | " \
@@ -264,11 +286,64 @@ class AEncoding:
     def find_p_s_i_by_idx(self, idx):
         return [x for x in self.probs if x.curr_s_i.idx == idx]
 
+    def get_code_val_10(self):
+        last_layer = self.layers[-1]
+        last_f_s_ik = last_layer.curr_F_s_ik
+        last_g_s_ik = last_layer.curr_G_s_ik
+        return last_f_s_ik.val() + last_g_s_ik.val() / 2
+
+    def get_nb_dec(self, n):
+        nb, dec = str(n).split(".")
+        return nb, float(f"0.{dec}")
+
+    def get_code_val_2(self):
+        code_10 = self.get_code_val_10()
+        str_code_10 = str(code_10)
+        max_dec_len = int(self.get_L_val())
+
+        code_2 = []
+
+        for i in range(max_dec_len):
+            mult = code_10 * 2
+            nb, dec = self.get_nb_dec(mult)
+            code_2.append(nb)
+            code_10 = dec
+
+        code_2 = "".join(code_2)
+
+        return f"{np.binary_repr(int(code_10))}.{code_2}"
+
+    def get_code(self):
+        last_layer = self.layers[-1]
+        last_f_s_ik = last_layer.curr_F_s_ik
+        last_g_s_ik = last_layer.curr_G_s_ik
+        code_10 = self.get_code_val_10()
+        code_2 = self.get_code_val_2()
+        return f"_x = " \
+               f"bin({last_f_s_ik.val()}+{last_g_s_ik.val()}/2) = " \
+               f"bin({code_10}) = " \
+               f"{code_2}"
+
+    def get_L_val(self):
+        last_layer = self.layers[-1]
+        last_g_s_ik = last_layer.curr_G_s_ik
+
+        return np.ceil(-np.log2(last_g_s_ik.val())) + 1
+
+    def get_L(self):
+        last_layer = self.layers[-1]
+        last_g_s_ik = last_layer.curr_G_s_ik
+
+        return f"L = ⌈-log_2(G(_s))⌉ + 1 = ⌈-log_2({last_g_s_ik.val()})⌉ + 1 = {self.get_L_val()}"
+
 
 if __name__ == '__main__':
     ae = AEncoding("task4_a_encoding/input1.txt")
     ae.build_layers()
     ae.print_layers()
+    print(ae.get_L())
+    print(ae.get_code())
+    ae.layers[-1].draw()
 
     # l1 = Layer(ae)
     # l2 = Layer(ae, l1)
