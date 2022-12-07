@@ -28,6 +28,11 @@ class Prob:
     def __str__(self):
         return f"p({str(self.curr_s_i)})={self.value}"
 
+    def str_repr(self):
+        return f"p({str(self.curr_s_i)})={self.value}" + int(200 * self.value - len(f"p({str(self.curr_s_i)})={self.value}")) * " "
+
+    def short_str(self, step):
+        return f"p({str(self.curr_s_i)})G_{step}" + int(200 * self.value - len(f"p({str(self.curr_s_i)})G_{step}")) * " "
 
 class Q_S_i:
     def __init__(self, curr_idx, curr_Q_S_i: "Q_S_i" = None, curr_prob: Prob = None):
@@ -51,6 +56,9 @@ class Q_S_i:
     def __eq__(self, other):
         return other.curr_idx == self.curr_idx
 
+    def str_repr(self):
+        return int(200 * (self.curr_prob.value if self.curr_prob is not None else 0) - len(f"q(s{self.curr_idx})={self.val()}")) * " " + f"q(s{self.curr_idx})={self.val()}"
+
 
 class G_S_ik:
     def __init__(self, curr_prob: Prob = None, prev_G_S_ik: "G_S_ik" = None):
@@ -67,6 +75,12 @@ class G_S_ik:
         if self.curr_prob is not None:
             return f"{self.curr_prob.value}*{self.prev_G_S_ik.val()}={self.val()}"
         return "1"
+
+    def str_repr(self, step):
+        if self.curr_prob is not None:
+            return f"G{step}={self.val()}"
+        else:
+            return None
 
 class F_S_ik:
     def __init__(self,
@@ -88,6 +102,9 @@ class F_S_ik:
             return f"{self.prev_f_s_ik.val()}+{self.curr_q_s_i.val()}*{self.prev_g_s_ik.val()}={self.val()}"
         return "0"
 
+    def str_repr(self, step):
+        return f"F_{step} = {self.val()}"
+
 
 class Layer:
     def __init__(self, ae: "AEncoding",  prev_layer=None):
@@ -97,7 +114,7 @@ class Layer:
         self.seq = ae.seq
 
         self.step = 0
-        self.idx = 1
+        self.idx = "-"
         self.curr_s_i = None
         self.curr_s_ik = []
         self.curr_p_s_i = None
@@ -128,7 +145,7 @@ class Layer:
             "G_s_ik": len(self.str_G_s_ik)
         }
 
-    def draw(self):
+    def draw(self, compute_x):
         line = ["-" for i in range(self.draw_line_len)]
         line[0] = "|"
         line[-1] = "|"
@@ -139,13 +156,28 @@ class Layer:
             line[idx_to_mark] = "|"
             prev_val_to_mark = val_to_mark
 
+        str_qs = "".join([i.str_repr() for i in self.ae.q_s_i_s])
+        if self.step > 0:
+            str_probs = "".join([p.short_str(self.step) for p in self.ae.probs])
+        else:
+            str_probs = "".join([p.str_repr() for p in self.ae.probs])
+
+        x_val = self.get_val_by_code_2()
+
+        min_range_val = self.curr_F_s_ik.val()
+        max_range_val = self.curr_F_s_ik.val() + self.curr_G_s_ik.val()
+        normalized_x = (compute_x - min_range_val) / (max_range_val - min_range_val)
+        val_to_mark = self.draw_line_len * normalized_x
+        idx_to_mark = int(np.round(val_to_mark)) - 1
+        line[idx_to_mark] = "*"
 
 
+        # # \r{'k=' + str(self.step):<10}{str(self.curr_s_i if self.curr_s_i else ""):<10}{''.join(line)} i={self.idx:<18} x={x_val}
         print(
             f"""
-            \r{'':+<5}
-            \r{'':+<5}{''.join(line)}
-            \r{'':+<5}
+            \r{'':<20} {f'{str_probs:<{self.draw_line_len}}'}
+            # \r{'k=' + str(self.step):<10}{str(self.curr_s_i if self.curr_s_i else ""):<10}{''.join(line)} i={self.idx:<18}
+            \r{self.curr_F_s_ik.str_repr(self.step):>20} {f'{self.curr_G_s_ik.str_repr(self.step):^{self.draw_line_len}}' if self.curr_G_s_ik.str_repr(self.step) is not None else f'{str_qs:<{self.draw_line_len}}'} {np.round(self.curr_F_s_ik.val() + self.curr_G_s_ik.val(), 12)}
             """
         )
 
@@ -171,9 +203,10 @@ class Layer:
     def fill_by_prev_layer(self, prev_layer: "Layer"):
         if prev_layer is not None:
             self.step = prev_layer.step + 1
-            self.idx = prev_layer.idx + 1
 
             self.curr_s_i = S_i(str(self.seq[self.get_seq_idx()]))
+
+            self.idx = self.curr_s_i.idx
 
             self.curr_s_ik.extend(prev_layer.curr_s_ik)
             self.curr_s_ik.append(self.curr_s_i)
@@ -184,6 +217,46 @@ class Layer:
             self.curr_G_s_ik = G_S_ik(self.curr_p_s_i, prev_layer.curr_G_s_ik)
 
             self.curr_F_s_ik = F_S_ik(prev_layer.curr_F_s_ik, self.curr_q_s_i, prev_layer.curr_G_s_ik)
+
+    def get_code_val_10(self):
+        last_f_s_ik = self.curr_F_s_ik
+        last_g_s_ik = self.curr_G_s_ik
+        return last_f_s_ik.val() + last_g_s_ik.val() / 2
+
+    def get_nb_dec(self, n):
+        nb, dec = str(n).split(".")
+        return nb, float(f"0.{dec}")
+
+    def get_code_val_2(self):
+        code_10 = self.get_code_val_10()
+        str_code_10 = str(code_10)
+        max_dec_len = int(self.get_L_val())
+
+        code_2 = []
+
+        for i in range(max_dec_len):
+            mult = code_10 * 2
+            nb, dec = self.get_nb_dec(mult)
+            code_2.append(nb)
+            code_10 = dec
+
+        code_2 = "".join(code_2)
+
+        return f"{np.binary_repr(int(code_10))}.{code_2}"
+
+    def get_val_by_code_2(self):
+        code_2 = self.get_code_val_2()
+        nb, dec = code_2.split(".")
+        pow_of_2 = -1
+        res = 0
+        for d in dec:
+            res += 2**pow_of_2 * int(d)
+            pow_of_2 -= 1
+        return float(f"{res}")
+
+    def get_L_val(self):
+        return np.ceil(-np.log2(self.curr_G_s_ik.val())) + 1
+        # return 9
 
 
 class AEncoding:
@@ -219,8 +292,21 @@ class AEncoding:
         self.max_vars_len = curr_vals
 
     def print_layers(self):
+        print(f"{'K':{self.max_vars_len['step']}} | "
+              f"{'i':{self.max_vars_len['idx']}} | "
+              f"{'Si':{self.max_vars_len['s_i']}} | "
+              f"{'Sik':{self.max_vars_len['s_ik']}} | "
+              f"{'p(Si)':{self.max_vars_len['p_s_i']}} | "
+              f"{'q(Si)':{self.max_vars_len['q_s_i']}} | "
+              f"{'F(Sik)':{self.max_vars_len['F_s_ik']}} | "
+              f"{'G(Sik)':{self.max_vars_len['G_s_ik']}}"
+              )
         for l in self.layers:
             print(l.to_str(self.max_vars_len))
+
+    def draw_layers(self):
+        for l in self.layers:
+            l.draw(self.layers[-1].get_val_by_code_2())
 
 
     def find_q_s_i_by_idx(self, idx):
@@ -336,6 +422,10 @@ class AEncoding:
 
         return f"L = ⌈-log_2(G(_s))⌉ + 1 = ⌈-log_2({last_g_s_ik.val()})⌉ + 1 = {self.get_L_val()}"
 
+class ADecoding:
+    def __init__(self, ae):
+        self.ae = ae
+
 
 if __name__ == '__main__':
     ae = AEncoding("task4_a_encoding/input1.txt")
@@ -343,7 +433,7 @@ if __name__ == '__main__':
     ae.print_layers()
     print(ae.get_L())
     print(ae.get_code())
-    ae.layers[-1].draw()
+    ae.draw_layers()
 
     # l1 = Layer(ae)
     # l2 = Layer(ae, l1)
