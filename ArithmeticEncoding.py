@@ -46,11 +46,11 @@ class Q_S_i:
             res += self.curr_Q_S_i.val()
         if self.curr_prob is not None:
             res += self.curr_prob.value
-        return res
+        return np.round(res, 15)
 
     def __str__(self):
         if self.curr_Q_S_i is not None:
-            return f"q(s{self.curr_idx})={self.curr_Q_S_i.val()}+{self.curr_prob.value}={self.val()}"
+            return f"q(s{self.curr_idx})={np.round(self.curr_Q_S_i.val())}+{self.curr_prob.value}={np.round(self.val())}"
         return "0"
 
     def __eq__(self, other):
@@ -95,15 +95,15 @@ class F_S_ik:
         if self.prev_f_s_ik is None:
             return 0
         else:
-            return self.prev_f_s_ik.val() + self.curr_q_s_i.val() * self.prev_g_s_ik.val()
+            return np.round(self.prev_f_s_ik.val() + self.curr_q_s_i.val() * self.prev_g_s_ik.val(), 15)
 
     def __str__(self):
         if self.prev_f_s_ik is not None:
-            return f"{self.prev_f_s_ik.val()}+{self.curr_q_s_i.val()}*{self.prev_g_s_ik.val()}={self.val()}"
+            return f"{np.round(self.prev_f_s_ik.val())}+{np.round(self.curr_q_s_i.val(), 10)}*{np.round(self.prev_g_s_ik.val(), 10)}={np.round(self.val(), 10)}"
         return "0"
 
     def str_repr(self, step):
-        return f"F_{step} = {self.val()}"
+        return f"F_{step} = {np.round(self.val(), 15)}"
 
 
 class Layer:
@@ -308,7 +308,6 @@ class AEncoding:
         for l in self.layers:
             l.draw(self.layers[-1].get_val_by_code_2())
 
-
     def find_q_s_i_by_idx(self, idx):
         return [x for x in self.q_s_i_s if x.curr_idx == idx]
 
@@ -328,7 +327,6 @@ class AEncoding:
                 p_s_i_s = p_s_i_s[0]
             new_q_s_i = Q_S_i(idx, q_s_i_s, p_s_i_s)
             self.q_s_i_s.append(new_q_s_i)
-
 
     def read_input(self, filename=None):
         if filename is None:
@@ -376,7 +374,7 @@ class AEncoding:
         last_layer = self.layers[-1]
         last_f_s_ik = last_layer.curr_F_s_ik
         last_g_s_ik = last_layer.curr_G_s_ik
-        return last_f_s_ik.val() + last_g_s_ik.val() / 2
+        return np.round(last_f_s_ik.val() + last_g_s_ik.val() / 2, 15)
 
     def get_nb_dec(self, n):
         nb, dec = str(n).split(".")
@@ -406,7 +404,7 @@ class AEncoding:
         code_10 = self.get_code_val_10()
         code_2 = self.get_code_val_2()
         return f"_x = " \
-               f"bin({last_f_s_ik.val()}+{last_g_s_ik.val()}/2) = " \
+               f"bin({np.round(last_f_s_ik.val(), 15)}+{last_g_s_ik.val()}/2) = " \
                f"bin({code_10}) = " \
                f"{code_2}"
 
@@ -422,9 +420,126 @@ class AEncoding:
 
         return f"L = ⌈-log_2(G(_s))⌉ + 1 = ⌈-log_2({last_g_s_ik.val()})⌉ + 1 = {self.get_L_val()}"
 
+
+class DLayer:
+
+    class CheckRes:
+        def __init__(self, val_to_check, x, q_s_i):
+            self.val_to_check = val_to_check
+            self.x = x
+            self.q_s_i = q_s_i
+
+        def get_sign(self):
+            if self.get_bool_res():
+                return "<"
+            else:
+                return ">"
+
+        def get_bool_res(self):
+            return self.val_to_check <= self.x
+
+        def to_str(self):
+            return f"{self.val_to_check} {self.get_sign()} x"
+
+    def __init__(self, ad: "ADecoding",  prev_layer=None):
+        self.seq = []
+        self.ae = ad.ae
+        self.computed_x = ad.computed_x_10
+
+        # need to be reinit
+        self.step = 1
+        self.curr_F_s_ik = F_S_ik()
+        self.curr_G_s_ik = G_S_ik()
+        # end of need to be reinit
+
+        self.Q_s_i_s = self.ae.q_s_i_s
+
+        self.checks: List[DLayer.CheckRes] = []
+
+        self.curr_q_s_i = None
+        self.curr_prob = None
+
+        self.fill_by_prev_layer(prev_layer)
+
+        self.make_checks()
+        self.find_prob()
+
+    def fill_by_prev_layer(self, prev_layer: "DLayer"):
+        if prev_layer is not None:
+            self.step = prev_layer.step + 1
+            self.curr_F_s_ik = F_S_ik(prev_layer.curr_F_s_ik, prev_layer.curr_q_s_i, prev_layer.curr_G_s_ik)
+            self.curr_G_s_ik = G_S_ik(prev_layer.curr_prob, prev_layer.curr_G_s_ik)
+
+    def get_check(self, q_s_i: Q_S_i):
+        val_to_check = np.round(self.curr_F_s_ik.val() + q_s_i.val() * self.curr_G_s_ik.val(), 10)
+        return self.CheckRes(val_to_check, self.computed_x, q_s_i)
+
+    def make_checks(self):
+        for q_s_i in self.Q_s_i_s:
+            check = self.get_check(q_s_i)
+            self.checks.append(check)
+
+    def find_prob(self):
+        i = 0
+        flag = False
+        for i in range(len(self.checks)):
+            if not self.checks[i].get_bool_res():
+                flag = True
+                break
+        if not flag:
+            i += 1
+        found_q_s_i = self.Q_s_i_s[i - 1]
+        self.curr_q_s_i = found_q_s_i
+        found_p_s_i = self.ae.find_p_s_i_by_s_i(S_i(f"s{found_q_s_i.curr_idx}"))
+        self.curr_prob = found_p_s_i
+
+    def print_as_str(self):
+        total_checks = len(self.checks)
+        print("-" * 94)
+        for ch_i in range(total_checks):
+            if ch_i == int(total_checks / 2): # print vals
+                print(f"{self.step:^3} | "
+                      f"{self.curr_F_s_ik.val():^10} | "
+                      f"{self.curr_G_s_ik.val():^10} | "
+                      f"{'s' + str(self.checks[ch_i].q_s_i.curr_idx):^10} | "
+                      f"{self.checks[ch_i].q_s_i.val():^10} | "
+                      f"{self.checks[ch_i].to_str():^20} | "
+                      f"{str(self.curr_prob.curr_s_i):^5} | "
+                      f"{self.curr_prob.value:^5}")
+            else:
+                print(
+                    f"{'':^3} | "
+                    f"{'':^10} | "
+                    f"{'':^10} | "
+                    f"{'s' + str(self.checks[ch_i].q_s_i.curr_idx):^10} | "
+                    f"{self.checks[ch_i].q_s_i.val():^10} | "
+                    f"{self.checks[ch_i].to_str():^20} | "
+                    f"{'':^5} | "
+                    f"{'':^5}")
+
+
 class ADecoding:
-    def __init__(self, ae):
+    def __init__(self, ae: AEncoding):
+        self.layers = []
         self.ae = ae
+
+        self.computed_x_2 = self.ae.layers[-1].get_code_val_2()
+        self.computed_x_10 = self.ae.layers[-1].get_val_by_code_2()
+
+        self.build_layers()
+
+    def print_layers(self):
+        print(f"{'k':3} | {'F_k':10} | {'G_k':10} | {'?Si':10} | {'q(Si)':10} | {'Fk+qi*Gk<x':20} | {'Si':5} | {'p(Si)':5}")
+        print(f"{'0':3} | {f'x = {self.computed_x_2}_2 = {self.computed_x_10}_10':^70}")
+        for l in self.layers:
+            l.print_as_str()
+
+    def build_layers(self):
+        old_layer = None
+        for i in range(len(self.ae.seq)):
+            new_layer = DLayer(self, old_layer)
+            self.layers.append(new_layer)
+            old_layer = new_layer
 
 
 if __name__ == '__main__':
@@ -434,14 +549,7 @@ if __name__ == '__main__':
     print(ae.get_L())
     print(ae.get_code())
     ae.draw_layers()
+    print("\nDECODING\n")
 
-    # l1 = Layer(ae)
-    # l2 = Layer(ae, l1)
-    # l3 = Layer(ae, l2)
-    # l4 = Layer(ae, l1)
-    # l5 = Layer(ae, l2)
-    # l2 = Layer(ae, l1)
-    # print(l1.to_str())
-    # print(l2.to_str())
-    # print(l3.to_str())
-    print()
+    ad = ADecoding(ae)
+    ad.print_layers()
