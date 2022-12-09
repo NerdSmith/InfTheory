@@ -50,7 +50,7 @@ class Q_S_i:
 
     def __str__(self):
         if self.curr_Q_S_i is not None:
-            return f"q(s{self.curr_idx})={np.round(self.curr_Q_S_i.val())}+{self.curr_prob.value}={np.round(self.val())}"
+            return f"q(s{self.curr_idx})={np.round(self.curr_Q_S_i.val(), 16)}+{self.curr_prob.value}={np.round(self.val(), 16)}"
         return "0"
 
     def __eq__(self, other):
@@ -99,7 +99,7 @@ class F_S_ik:
 
     def __str__(self):
         if self.prev_f_s_ik is not None:
-            return f"{np.round(self.prev_f_s_ik.val())}+{np.round(self.curr_q_s_i.val(), 10)}*{np.round(self.prev_g_s_ik.val(), 10)}={np.round(self.val(), 10)}"
+            return f"{np.round(self.prev_f_s_ik.val(), 16)}+{np.round(self.curr_q_s_i.val(), 10)}*{np.round(self.prev_g_s_ik.val(), 10)}={np.round(self.val(), 10)}"
         return "0"
 
     def str_repr(self, step):
