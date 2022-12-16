@@ -543,7 +543,7 @@ class ADecoding:
 
 
 if __name__ == '__main__':
-    ae = AEncoding("task4_a_encoding/input1.txt")
+    ae = AEncoding("atta_3/input1.txt")
     ae.build_layers()
     ae.print_layers()
     print(ae.get_L())

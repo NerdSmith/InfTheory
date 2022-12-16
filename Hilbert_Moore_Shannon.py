@@ -65,7 +65,7 @@ class Layer:
               f"{self.curr_prob.value():^10} | "
               f"{self.curr_q:^10} | "
               f"{self.curr_G:^10} | "
-              f"{np.round(self.curr_l_m_inner, 2):^10} | "
+              f"{np.round(self.curr_l_m_inner, 4):^10} | "
               f"{self.curr_G_2:^20} | "
               f"{self.code:^20} | "
               f"{self.curr_l_m:^3}")
@@ -92,7 +92,7 @@ class HMEncoding:
         res = 0
         for l in self.layers:
             res += l.curr_l_m * l.curr_prob.value()
-        return np.round(res, 3)
+        return np.round(res, 4)
 
     def get_H(self):
         res = 0
@@ -116,7 +116,7 @@ class HMEncoding:
 
 
 if __name__ == '__main__':
-    e = Encoding("task5_hilbert_moore\\input1.txt")
+    e = Encoding("atta_3\\input2.txt")
     hme = HMEncoding(e.probabilities)
     hme.build_layers()
     hme.print_layers()
